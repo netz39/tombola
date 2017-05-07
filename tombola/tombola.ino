@@ -1,6 +1,11 @@
  
 #include <Wire.h>
 
+#define MAX_RND 50 // Max Random number
+#define STEP 39  // Step value in number progression
+
+
+static const int buttonPin = 2;
 
 // 7-segment display driver (SAA1064)
 static const char i2caddr = 0x38;
@@ -68,18 +73,74 @@ void saa1064_set_dec_number(const char number) {
   saa1064_set_digit(0, number % 10);
 }
 
+
+static char c = 0;
+
+/*
+  RND variables
+*/
+char numbers[MAX_RND];
+int n_numbers = MAX_RND;
+int position = 0;
+int current = 0;
+
+
 void setup() {
   // put your setup code here, to run once:
   Wire.begin();
-  const int buttonPin = 2;
 
   saa1064_setup();
 
-  saa1064_set_hex_number(0xef);
+  // initialize the pushbutton pin as an input:
+  pinMode(buttonPin, INPUT);
 
+  // init the rnd array
+  for (int i = 0; i < MAX_RND; i++)
+    numbers[i] = i;
 }
+
+
+void draw() {
+  if (n_numbers == 0) {
+    current = 99;
+    return;
+  }
+
+  n_numbers--;
+
+  // calculate new position
+  if (n_numbers < 2)
+    position = 0;
+  else
+    position = (position + STEP) % n_numbers;
+
+  // new current number
+  current = numbers[position];
+
+  if (n_numbers > 0) {
+    // move number at end position and
+    // shrink number array (has been done at first step)
+    numbers[position] = numbers[n_numbers];
+  }
+}
+
+
+bool btnWait = false; /* wait for button release */
 
 void loop() {
   // put your main code here, to run repeatedly:
+
+  int buttonState = digitalRead(buttonPin);
+
+  if (buttonState == LOW) btnWait = false;
+  if ((buttonState == HIGH) && !btnWait) {
+    btnWait = true;
+
+    draw();
+  }
+
+  if (c == MAX_RND) c = 0;
+
+  saa1064_set_dec_number(current);
 
 }
